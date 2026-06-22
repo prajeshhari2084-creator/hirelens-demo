@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HireLens AI — Google Meet Live Demo</title>
+<style>
+  :root{
+    --meet:#202124; --meet2:#2a2b2e; --tile:#3c4043; --line:#3c4043;
+    --txt:#e8eaed; --mut:#9aa0a6; --blue:#5b8cff; --violet:#7b6bff;
+    --green:#34d399; --amber:#fbbf24; --red:#f87171; --g-red:#ea4335; --g-green:#34a853;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Google Sans",Roboto,-apple-system,Segoe UI,sans-serif;background:#0a0a0b;color:var(--txt);overflow:hidden}
+  .app{height:100vh;width:100vw;position:relative}
+
+  /* ============ JOIN SCREEN ============ */
+  #join{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(900px 500px at 75% 10%,#1b2440 0,#0a0a0b 60%);z-index:30}
+  .joincard{width:560px;max-width:92vw;background:#16181d;border:1px solid #2b2d33;border-radius:18px;padding:34px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--blue),var(--violet));display:grid;place-items:center;font-size:22px;color:#fff;font-weight:700}
+  .brand b{font-size:21px}
+  .brand small{display:block;color:var(--mut);font-size:11px;letter-spacing:2px}
+  .joincard h2{margin:22px 0 4px;font-size:19px}
+  .joincard p{color:var(--mut);font-size:13.5px;margin:0 0 18px;line-height:1.5}
+  .field{display:flex;align-items:center;gap:10px;background:#0d0f13;border:1px solid #2b2d33;border-radius:11px;padding:11px 14px;margin-bottom:14px}
+  .field svg{flex-shrink:0}
+  .field input{flex:1;background:none;border:none;color:var(--txt);font-size:14px;outline:none}
+  .row2{display:flex;gap:12px;margin-bottom:18px}
+  .mini{flex:1;background:#0d0f13;border:1px solid #2b2d33;border-radius:11px;padding:11px 13px;font-size:12.5px;color:var(--mut)}
+  .mini b{color:var(--txt);display:block;font-size:13px;margin-bottom:2px}
+  .deploy{width:100%;background:linear-gradient(135deg,var(--blue),var(--violet));color:#fff;border:none;border-radius:12px;
+    padding:14px;font-size:15.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px}
+  .deploy:hover{filter:brightness(1.08)}
+
+  /* ============ LOBBY OVERLAY ============ */
+  #lobby{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(700px 500px at 50% 30%,#1a2138 0,#070708 70%)}
+  #lobby.show{display:flex}
+  .botorb{width:96px;height:96px;border-radius:26px;background:linear-gradient(135deg,var(--blue),var(--violet));
+    display:grid;place-items:center;font-size:48px;color:#fff;margin-bottom:26px;position:relative;box-shadow:0 0 0 0 rgba(91,140,255,.5);animation:ring 1.8s infinite}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(91,140,255,.45)}70%{box-shadow:0 0 0 28px rgba(91,140,255,0)}100%{box-shadow:0 0 0 0 rgba(91,140,255,0)}}
+  #lobbyTitle{font-size:20px;font-weight:600;margin-bottom:24px}
+  .steps{width:420px;max-width:90vw}
+  .step{display:flex;align-items:center;gap:13px;padding:11px 14px;border-radius:11px;margin-bottom:9px;background:#13151a;border:1px solid #23262d;
+    opacity:.35;transition:.4s}
+  .step.active{opacity:1;border-color:var(--blue);background:#161d2e}
+  .step.done{opacity:1}
+  .sdot{width:22px;height:22px;border-radius:50%;border:2px solid #3a3d44;flex-shrink:0;display:grid;place-items:center;font-size:13px}
+  .step.active .sdot{border-color:var(--blue);border-top-color:transparent;animation:spin .8s linear infinite}
+  .step.done .sdot{border-color:var(--green);background:var(--green);color:#06301f;animation:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .step span{font-size:14px}
+
+  /* ============ MEET ROOM ============ */
+  #room{position:absolute;inset:0;display:none;flex-direction:column;background:var(--meet)}
+  #room.show{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:9px 18px;font-size:13px;color:var(--mut)}
+  .topbar .mt{display:flex;align-items:center;gap:9px;color:var(--txt);font-weight:500}
+  .rec{display:flex;align-items:center;gap:6px;color:var(--g-red);font-weight:600}
+  .recdot{width:9px;height:9px;border-radius:50%;background:var(--g-red);animation:blink 1.4s infinite}
+  @keyframes blink{50%{opacity:.3}}
+  .stage{flex:1;display:flex;gap:12px;padding:0 14px 8px;min-height:0}
+  .grid{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:12px;min-height:0}
+  .vtile{position:relative;background:linear-gradient(160deg,#3a3d44,#26282c);border-radius:14px;overflow:hidden;display:grid;place-items:center}
+  .vtile .face{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-size:38px;font-weight:700;color:#fff}
+  .vtile .nm{position:absolute;left:12px;bottom:10px;background:rgba(0,0,0,.55);padding:4px 11px;border-radius:7px;font-size:13px;display:flex;align-items:center;gap:7px}
+  .vtile.speaking{outline:3px solid var(--blue);outline-offset:-3px}
+  .vtile.bot{background:linear-gradient(160deg,#243049,#1a2236)}
+  .vtile.bot .face{background:linear-gradient(135deg,var(--blue),var(--violet));border-radius:24px}
+  .micoff{color:var(--g-red)}
+  .liveq{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.5);font-size:10.5px;color:var(--mut);padding:3px 8px;border-radius:20px}
+
+  /* side panel */
+  .side{width:380px;flex-shrink:0;background:#16181d;border:1px solid #23262d;border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+  .tabs{display:flex;border-bottom:1px solid #23262d}
+  .tab{flex:1;padding:11px 4px;text-align:center;font-size:12px;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent}
+  .tab.on{color:var(--txt);border-bottom-color:var(--blue);background:#1b1e25}
+  .tab .bdg{display:inline-block;min-width:16px;font-size:10px;background:var(--blue);color:#fff;border-radius:10px;padding:0 5px;margin-left:3px}
+  .panel{flex:1;overflow-y:auto;padding:14px}
+  .phead{display:flex;align-items:center;gap:8px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);margin-bottom:12px}
+  .hide{display:none}
+
+  /* transcript */
+  .turn{margin-bottom:13px;animation:fade .4s}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+  .who{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;color:var(--mut)}
+  .who.hr{color:var(--blue)} .who.cand{color:#9b8bff}
+  .bub{background:#22252c;border:1px solid #2c2f37;border-radius:10px;padding:9px 11px;font-size:13px;line-height:1.45}
+  .flag{margin-top:6px;font-size:11.5px;border-radius:8px;padding:7px 9px;display:flex;gap:7px}
+  .flag.v{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.35)}
+  .flag.u{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35)}
+  .flag.c{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4)}
+  .ft{font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:14px;white-space:nowrap;height:fit-content}
+  .ft.v{background:var(--green);color:#06301f}.ft.u{background:var(--amber);color:#3a2a00}.ft.c{background:var(--red);color:#3a0000}
+
+  /* resume check */
+  .resume{background:#fbfbfd;color:#1a1a1a;border-radius:10px;padding:16px 16px 10px;position:relative;overflow:hidden;margin-bottom:6px}
+  .resume h4{margin:0;font-size:16px;color:#111}
+  .resume .sub{font-size:11px;color:#666;margin:2px 0 12px}
+  .scanner{position:absolute;left:0;right:0;height:60px;top:-60px;
+    background:linear-gradient(to bottom,rgba(91,140,255,0),rgba(91,140,255,.35),rgba(91,140,255,0));
+    box-shadow:0 0 18px 4px rgba(91,140,255,.4)}
+  .scanning .scanner{animation:scan 2.2s ease-in-out}
+  @keyframes scan{0%{top:-60px}100%{top:100%}}
+  .claim{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px solid #ededf2}
+  .claim:first-of-type{border-top:none}
+  .claim .ctxt{flex:1;font-size:12.5px;line-height:1.35}
+  .claim .src{font-size:10.5px;color:#777;margin-top:2px}
+  .vb{font-size:9px;font-weight:800;text-transform:uppercase;padding:3px 7px;border-radius:14px;white-space:nowrap;opacity:0;transform:scale(.6);transition:.3s}
+  .vb.show{opacity:1;transform:scale(1)}
+  .vb.t{background:#d6f6e8;color:#067a4e}.vb.u{background:#fdeccd;color:#8a5d00}.vb.f{background:#fcdada;color:#b3261e}
+  .vsum{display:flex;gap:8px;margin-bottom:12px}
+  .vsum div{flex:1;text-align:center;background:#1b1e25;border:1px solid #2c2f37;border-radius:9px;padding:8px}
+  .vsum .n{font-size:20px;font-weight:800}.vsum .l{font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+
+  /* copilot */
+  .qcard{background:#1b1e25;border:1px solid #2c2f37;border-left:3px solid var(--blue);border-radius:9px;padding:10px 11px;margin-bottom:9px;animation:fade .4s}
+  .qcard .pill{display:inline-block;font-size:9.5px;color:var(--blue);background:rgba(91,140,255,.12);border:1px solid rgba(91,140,255,.3);padding:2px 7px;border-radius:14px;margin-bottom:6px}
+  .qcard .q{font-size:13px;font-weight:600;margin-bottom:4px}
+  .qcard .e{font-size:11.5px;color:var(--mut);line-height:1.4}.qcard .e b{color:var(--green)}
+
+  /* report */
+  .verdict{display:flex;gap:12px;align-items:center;background:#1b1e25;border:1px solid var(--green);border-radius:11px;padding:13px;margin-bottom:13px}
+  .ring{width:58px;height:58px;border-radius:50%;background:var(--green);display:grid;place-items:center;font-size:20px;font-weight:800;color:#06301f;flex-shrink:0}
+  .rc{background:#1b1e25;border:1px solid #2c2f37;border-radius:10px;padding:11px;margin-bottom:10px}
+  .rc h5{margin:0 0 7px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+  .rc li{font-size:12px;margin:4px 0;line-height:1.35}
+
+  /* bottom control bar */
+  .ctrl{display:flex;align-items:center;justify-content:center;gap:14px;padding:12px}
+  .cbtn{width:46px;height:46px;border-radius:50%;background:var(--tile);border:none;color:var(--txt);display:grid;place-items:center;cursor:pointer;font-size:18px}
+  .cbtn.red{background:var(--g-red)}
+  .ctrl .time{position:absolute;left:22px;font-size:13px;color:var(--mut)}
+  .note{font-size:10.5px;color:var(--mut);text-align:center;padding:0 14px 10px;line-height:1.4}
+  .empty{color:var(--mut);font-size:12.5px;text-align:center;padding:30px 8px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== JOIN SCREEN ===== -->
+  <div id="join">
+    <div class="joincard">
+      <div class="brand"><div class="logo">◎</div><div><b>HireLens AI</b><small>INTERVIEW COPILOT</small></div></div>
+      <h2>Deploy the copilot to a Google Meet</h2>
+      <p>Paste the interview link. HireLens joins as a participant, transcribes the call, and fact-checks the candidate's CV against LinkedIn & public records — live.</p>
+      <div class="field">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z" fill="#34a853"/></svg>
+        <input id="meetlink" value="meet.google.com/hjk-mxqp-rev  ·  Senior Backend Engineer interview" />
+      </div>
+      <div class="row2">
+        <div class="mini"><b>📄 CV attached</b>Arjun_Mehta_Resume.pdf</div>
+        <div class="mini"><b>🔗 LinkedIn linked</b>in/arjun-mehta-dev</div>
+      </div>
+      <div class="row2">
+        <div class="mini"><b>🧩 JD by HR</b>Sr. Backend Engineer · Payments</div>
+        <div class="mini"><b>💰 Budget set</b>₹35–40 LPA</div>
+      </div>
+      <button class="deploy" onclick="startJoin()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M10 17l5-5-5-5v10z"/></svg>
+        Deploy HireLens bot to the meeting
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== LOBBY ===== -->
+  <div id="lobby">
+    <div class="botorb">◎</div>
+    <div id="lobbyTitle">Connecting HireLens to Google Meet…</div>
+    <div class="steps" id="steps">
+      <div class="step" data-s="0"><div class="sdot"></div><span>Connecting to meet.google.com/hjk-mxqp-rev</span></div>
+      <div class="step" data-s="1"><div class="sdot"></div><span>HireLens Bot is asking to join…</span></div>
+      <div class="step" data-s="2"><div class="sdot"></div><span>Waiting for the host to admit the bot</span></div>
+      <div class="step" data-s="3"><div class="sdot"></div><span>Admitted ✓ — fetching CV, LinkedIn & public records</span></div>
+    </div>
+  </div>
+
+  <!-- ===== MEET ROOM ===== -->
+  <div id="room">
+    <div class="topbar">
+      <div class="mt">Senior Backend Engineer · Interview</div>
+      <div class="rec"><span class="recdot"></span>HireLens recording &amp; analysing · 03:14</div>
+      <div>meet.google.com/hjk-mxqp-rev</div>
+    </div>
+    <div class="stage">
+      <!-- video grid -->
+      <div class="grid">
+        <div class="vtile" id="t-hr"><div class="face" style="background:#1e6fd4">PS</div>
+          <div class="nm">🎙️ Priya Sharma · HR</div></div>
+        <div class="vtile" id="t-cand"><div class="face" style="background:#7a4dd0">AM</div>
+          <div class="nm">🎙️ Arjun Mehta · Candidate</div></div>
+        <div class="vtile bot" id="t-bot"><div class="face">◎</div>
+          <div class="nm">⚙️ HireLens AI · Bot</div>
+          <div class="liveq" id="botstatus">listening…</div></div>
+        <div class="vtile" id="t-obs"><div class="face" style="background:#3a7d52">RV</div>
+          <div class="nm"><svg width="12" height="12" viewBox="0 0 24 24" fill="#ea4335"><path d="M16 8V6a4 4 0 0 0-8 0v2H6v12h12V8h-2zm-6-2a2 2 0 1 1 4 0v2h-4V6z"/></svg> Rahul V · Panel</div></div>
+      </div>
+      <!-- side panel -->
+      <div class="side">
+        <div class="tabs">
+          <div class="tab on" data-t="verify">Live ✓<span class="bdg" id="bvf">0</span></div>
+          <div class="tab" data-t="resume">CV Check</div>
+          <div class="tab" data-t="jd">JD Fit</div>
+          <div class="tab" data-t="copilot">Copilot<span class="bdg" id="bcp">0</span></div>
+          <div class="tab" data-t="report">Report</div>
+        </div>
+
+        <!-- LIVE VERIFY -->
+        <div class="panel" id="p-verify">
+          <div class="phead">🎧 Live transcript &amp; claim check</div>
+          <div id="transcript"><div class="empty">HireLens is listening to the interview…<br>claims will be verified here in real time.</div></div>
+        </div>
+
+        <!-- RESUME CHECK -->
+        <div class="panel hide" id="p-resume">
+          <div class="phead">🔍 Resume truth-check</div>
+          <div class="vsum">
+            <div><div class="n" style="color:var(--green)" id="cT">0</div><div class="l">True</div></div>
+            <div><div class="n" style="color:var(--amber)" id="cU">0</div><div class="l">Unverified</div></div>
+            <div><div class="n" style="color:var(--red)" id="cF">0</div><div class="l">False</div></div>
+          </div>
+          <div class="resume" id="resumeDoc">
+            <div class="scanner"></div>
+            <h4>Arjun Mehta</h4>
+            <div class="sub">Senior Backend Engineer · Bengaluru · 6 yrs</div>
+            <div id="claims"></div>
+          </div>
+          <div class="note">Each line is matched against LinkedIn, GitHub, public credentials &amp; engineering blogs. HireLens flags — a human decides.</div>
+        </div>
+
+        <!-- JD FIT -->
+        <div class="panel hide" id="p-jd">
+          <div class="phead">🧩 Job description (from HR)</div>
+          <div class="rc" style="background:#fbfbfd;color:#1a1a1a;border:none">
+            <h5 style="color:#111;font-size:13px;text-transform:none;letter-spacing:0">Senior Backend Engineer — Payments</h5>
+            <div style="font-size:11px;color:#666;margin-bottom:8px">Posted by Priya Sharma (HR) · Budget: ₹35–40 LPA · Bengaluru / Hybrid</div>
+            <div style="font-size:11.5px;line-height:1.55;color:#333">
+              We're hiring a senior engineer to own our payments backend. Must have deep distributed-systems experience at scale, strong system design, and the ability to mentor a small team. Fintech background preferred.</div>
+          </div>
+
+          <div class="rc"><h5>📋 Candidate vs requirements</h5>
+            <div style="font-size:11.5px;line-height:1.5">
+              <div style="display:flex;gap:7px;margin:6px 0"><span class="vb t show">Met</span><span>5+ yrs backend engineering — <b>6 yrs ✓</b></span></div>
+              <div style="display:flex;gap:7px;margin:6px 0"><span class="vb t show">Met</span><span>Distributed systems at scale — <b>10M users (verified)</b></span></div>
+              <div style="display:flex;gap:7px;margin:6px 0"><span class="vb t show">Met</span><span>AWS / cloud — <b>AWS SA-Pro certified</b></span></div>
+              <div style="display:flex;gap:7px;margin:6px 0"><span class="vb t show">Met</span><span>Fintech / payments domain — <b>PayCircle ✓</b></span></div>
+              <div style="display:flex;gap:7px;margin:6px 0"><span class="vb u show">~</span><span>System design / sharding — <b>asserted, needs screen</b></span></div>
+              <div style="display:flex;gap:7px;margin:6px 0"><span class="vb u show">~</span><span>Mentor / lead a team — <b>'team of 12' unverified</b></span></div>
+              <div style="display:flex;gap:7px;margin:6px 0"><span class="vb f show">Gap</span><span>Proven cost optimization — <b>40% claim unverified</b></span></div>
+            </div>
+            <div style="margin-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut)"><span>Overall JD match</span><span style="color:var(--green);font-weight:700">81%</span></div>
+              <div style="height:7px;border-radius:6px;background:#2c2f37;margin-top:4px;overflow:hidden"><i style="display:block;height:100%;width:81%;background:linear-gradient(90deg,var(--blue),var(--green))"></i></div>
+              <div style="font-size:10.5px;color:var(--mut);margin-top:5px">4 of 7 fully met · 2 partial · 1 gap. Strong fit; close the gaps in a technical screen + references.</div></div></div>
+
+          <div class="rc" style="border-color:var(--green)"><h5>💵 Salary HireLens suggests HR offer</h5>
+            <div style="display:flex;align-items:center;gap:12px;margin:4px 0 8px">
+              <div style="font-size:26px;font-weight:800;color:var(--green)">₹37 LPA</div>
+              <div style="font-size:11px;color:var(--mut);line-height:1.4">fixed + standard ESOPs<br><span style="color:var(--green)">within HR's ₹35–40L budget</span></div></div>
+            <div style="font-size:11.5px;line-height:1.6">
+              • HR budget: <b>₹35–40 LPA</b> · Market band: <b>₹34–42 LPA</b><br>
+              • Candidate ask: <b>₹38 LPA</b> · Current: <b>₹31 LPA</b><br>
+              • <b style="color:var(--green)">Recommended: ₹37 LPA</b> — meets him near his ask, stays inside budget, ~19% hike (attractive but not over-paying)<br>
+              • <span style="color:var(--amber)">Hold ₹38–40L as negotiation room</span> only if references confirm the architect + cost-saving claims.</div></div>
+          <div class="note">HireLens matches the candidate to HR's actual JD and budget — the offer is a suggestion; HR decides.</div>
+        </div>
+
+        <!-- COPILOT -->
+        <div class="panel hide" id="p-copilot">
+          <div class="phead">⚡ Suggested questions for HR</div>
+          <div id="suggest"><div class="empty">Smart follow-ups appear here as the candidate speaks.</div></div>
+        </div>
+
+        <!-- REPORT -->
+        <div class="panel hide" id="p-report">
+          <div class="phead">📄 Post-interview report</div>
+          <div id="reportBody"><div class="empty">The full scored report generates when the interview ends.<br><br><button class="deploy" style="padding:10px" onclick="genReport()">Generate report now</button></div></div>
+        </div>
+      </div>
+    </div>
+    <!-- controls -->
+    <div class="ctrl">
+      <span class="time">HireLens · auto-pilot</span>
+      <button class="cbtn">🎤</button>
+      <button class="cbtn">📷</button>
+      <button class="cbtn">🖥️</button>
+      <button class="cbtn">✋</button>
+      <button class="cbtn red" onclick="endCall()">📞</button>
+    </div>
+    <div class="note">⚖️ Compliance: HireLens checks factual claims against evidence and never infers emotions or "lie-detects." It assists; the HR manager makes the final call. Demo data only.</div>
+  </div>
+</div>
+
+<script>
+/* ---------- DATA ---------- */
+const CLAIMS=[
+  {t:"Led the payments platform at PayCircle, scaled to 10M users",v:"t",src:"✓ Verified · LinkedIn tenure + PayCircle engineering blog"},
+  {t:"B.Tech in Computer Science, IIT Delhi (2018)",v:"t",src:"✓ Verified · National academic record matches"},
+  {t:"AWS Certified Solutions Architect – Professional",v:"t",src:"✓ Verified · Credly credential ID confirmed"},
+  {t:"Reduced cloud infrastructure cost by 40% in one quarter",v:"u",src:"? No public evidence — ask candidate to quantify"},
+  {t:"\"Lead Architect\" on the logistics platform",v:"f",src:"✗ Conflict · LinkedIn title reads 'Senior Engineer'"},
+  {t:"Managed a team of 12 engineers",v:"u",src:"? No team-lead title on record — clarify scope"},
+  {t:"Open-source: 2 libraries, ~3.1k GitHub stars",v:"t",src:"✓ Verified · GitHub profile confirms repos & stars"},
+];
+const TRANSCRIPT=[
+  {who:"hr",text:"Walk me through the most complex system you've owned end to end."},
+  {who:"cand",text:"I led the payments platform at PayCircle — we scaled it to about 10 million users.",
+    flag:{c:"v",t:"Verified",b:"Matches LinkedIn tenure + a public engineering blog. Credible."}},
+  {who:"hr",text:"What was your exact role in the scaling work?"},
+  {who:"cand",text:"I was basically the lead architect on it.",
+    flag:{c:"c",t:"Conflict",b:"CV/LinkedIn list title as 'Senior Engineer', not architect. Worth clarifying."}},
+  {who:"cand",text:"We also cut our cloud cost by nearly 40% in a single quarter.",
+    flag:{c:"u",t:"Probe",b:"Impressive but unverifiable. Ask how it was measured and what drove it."}},
+  {who:"hr",text:"Tell me about a production incident you handled."},
+  {who:"cand",text:"During a Diwali sale our queue backed up; I added autoscaling and a dead-letter queue and recovered in 20 minutes.",
+    flag:{c:"v",t:"Consistent",b:"Aligns with the event-driven architecture he described earlier."}},
+];
+const SUGGEST=[
+  {tag:"Clarify role",q:"Were you the lead architect, or did you contribute to an architecture someone else owned?",e:"Strong: honestly scopes the role instead of repeating 'lead architect'."},
+  {tag:"Verify metric",q:"How did you measure the 40% cloud-cost cut, and which change drove most of it?",e:"Strong: cites a baseline, a tool, and a specific lever — not round numbers."},
+  {tag:"Depth probe",q:"What was your sharding key, and what broke when traffic skewed?",e:"Strong: names a key + describes hot-shard mitigation and a real trade-off."},
+];
+
+const $=s=>document.querySelector(s);
+let ti=0,si=0,vf=0;
+
+/* ---------- JOIN FLOW ---------- */
+function startJoin(){
+  $("#join").style.display="none";
+  $("#lobby").classList.add("show");
+  const steps=[...document.querySelectorAll(".step")];
+  const titles=["Connecting HireLens to Google Meet…","Requesting to join the call…","Waiting for the host to admit…","Admitted — preparing the copilot ✓"];
+  let i=0;
+  const run=()=>{
+    if(i>0) steps[i-1].classList.remove("active"),steps[i-1].classList.add("done"),steps[i-1].querySelector(".sdot").textContent="✓";
+    if(i<steps.length){ steps[i].classList.add("active"); $("#lobbyTitle").textContent=titles[i]; i++; setTimeout(run,1400); }
+    else { setTimeout(enterRoom,900); }
+  };
+  run();
+}
+function enterRoom(){
+  $("#lobby").classList.remove("show");
+  $("#room").classList.add("show");
+  buildResume();
+  setTimeout(()=>{ runResumeScan(); }, 600);
+  setTimeout(()=>{ playInterview(); }, 3200);
+}
+
+/* ---------- RESUME SCAN ---------- */
+function buildResume(){
+  $("#claims").innerHTML=CLAIMS.map((c,i)=>`
+    <div class="claim" data-i="${i}">
+      <div class="ctxt">${c.t}<div class="src">${c.src}</div></div>
+      <span class="vb ${c.v}" id="vb${i}">${c.v==='t'?'True':c.v==='u'?'?':'False'}</span>
+    </div>`).join("");
+}
+function runResumeScan(){
+  const doc=$("#resumeDoc"); doc.classList.add("scanning");
+  let t=0,u=0,f=0;
+  CLAIMS.forEach((c,i)=>{
+    setTimeout(()=>{
+      $("#vb"+i).classList.add("show");
+      if(c.v==='t'){t++;$("#cT").textContent=t;}
+      else if(c.v==='u'){u++;$("#cU").textContent=u;}
+      else {f++;$("#cF").textContent=f;}
+    }, 500+i*260);
+  });
+  setTimeout(()=>doc.classList.remove("scanning"),2300);
+}
+
+/* ---------- INTERVIEW ---------- */
+function addTurn(t){
+  const tr=$("#transcript"); if(tr.querySelector(".empty"))tr.innerHTML="";
+  let f="";
+  if(t.flag) f=`<div class="flag ${t.flag.c}"><span class="ft ${t.flag.c}">${t.flag.t}</span><span>${t.flag.b}</span></div>`;
+  tr.insertAdjacentHTML("beforeend",`<div class="turn"><div class="who ${t.who}">${t.who==='hr'?'Priya · HR':'Arjun · Candidate'}</div><div class="bub">${t.text}</div>${f}</div>`);
+  tr.scrollTop=tr.scrollHeight;
+  if(t.flag){vf++;$("#bvf").textContent=vf;}
+  // speaking highlight
+  $("#t-hr").classList.toggle("speaking",t.who==='hr');
+  $("#t-cand").classList.toggle("speaking",t.who==='cand');
+  $("#botstatus").textContent = t.flag? (t.flag.c==='c'?"⚠ conflict flagged":t.flag.c==='u'?"… needs probing":"✓ verified") : "listening…";
+}
+function addSuggest(s){
+  const b=$("#suggest"); if(b.querySelector(".empty"))b.innerHTML="";
+  b.insertAdjacentHTML("beforeend",`<div class="qcard"><span class="pill">${s.tag}</span><div class="q">${s.q}</div><div class="e"><b>Expected:</b> ${s.e}</div></div>`);
+  si++;$("#bcp").textContent=si;
+}
+function playInterview(){
+  const iv=setInterval(()=>{
+    if(ti<TRANSCRIPT.length){ addTurn(TRANSCRIPT[ti]); ti++; if(ti>=2&&si<SUGGEST.length)addSuggest(SUGGEST[si]); }
+    else { while(si<SUGGEST.length)addSuggest(SUGGEST[si]); clearInterval(iv);
+      $("#botstatus").textContent="report ready"; }
+  },1700);
+}
+
+/* ---------- TABS ---------- */
+document.querySelectorAll(".tab").forEach(tab=>tab.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("on"));
+  tab.classList.add("on");
+  ["verify","resume","jd","copilot","report"].forEach(n=>$("#p-"+n).classList.add("hide"));
+  $("#p-"+tab.dataset.t).classList.remove("hide");
+});
+
+/* ---------- REPORT ---------- */
+function bar(label,val,color){
+  return `<div style="margin:7px 0">
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut)"><span>${label}</span><span style="color:${color};font-weight:700">${val}/10</span></div>
+    <div style="height:6px;border-radius:6px;background:#2c2f37;margin-top:3px;overflow:hidden"><i style="display:block;height:100%;width:${val*10}%;background:${color}"></i></div></div>`;
+}
+function genReport(){
+  $("#reportBody").innerHTML=`
+    <div class="verdict"><div class="ring">8.4</div>
+      <div><div style="font-size:16px;font-weight:800;color:var(--green)">RECOMMEND — proceed to offer*</div>
+      <div style="font-size:11.5px;color:var(--mut)">Overall match 8.4/10 · Confidence: High · *pending 2 reference checks</div></div></div>
+
+    <div class="rc"><h5>👤 Candidate snapshot</h5>
+      <div style="font-size:12px;line-height:1.7">
+        <b>Arjun Mehta</b> — Senior Backend Engineer<br>
+        📍 Bengaluru · 6 yrs experience · Notice: 30 days<br>
+        💰 Asking ₹38 LPA · Current ₹31 LPA<br>
+        🔗 in/arjun-mehta-dev · github.com/arjun-mehta-dev<br>
+        🗓️ Interviewed 22 Jun 2026 · 32 min · Panel: Priya S. (HR), Rahul V.</div></div>
+
+    <div class="rc"><h5>📊 Score breakdown</h5>
+      ${bar("Role fit",8.4,"#34d399")}
+      ${bar("Technical depth",8.0,"#5b8cff")}
+      ${bar("Credibility (claims hold up)",7.9,"#34d399")}
+      ${bar("Communication",8.5,"#5b8cff")}
+      ${bar("Leadership signals",6.8,"#fbbf24")}
+      ${bar("Values / culture add",7.5,"#7b6bff")}
+      <div style="font-size:10.5px;color:var(--mut);margin-top:6px">Weighted overall: <b style="color:var(--txt)">8.4 / 10</b></div></div>
+
+    <div class="rc"><h5>🔍 CV verification — 7 claims checked</h5>
+      <div style="font-size:11.5px;line-height:1.5">
+        <div style="display:flex;gap:7px;margin:5px 0"><span class="vb t show">True</span><span>10M-user payments platform · LinkedIn + eng blog</span></div>
+        <div style="display:flex;gap:7px;margin:5px 0"><span class="vb t show">True</span><span>B.Tech, IIT Delhi (2018) · academic record</span></div>
+        <div style="display:flex;gap:7px;margin:5px 0"><span class="vb t show">True</span><span>AWS Solutions Architect – Pro · Credly ID</span></div>
+        <div style="display:flex;gap:7px;margin:5px 0"><span class="vb t show">True</span><span>2 OSS libraries, ~3.1k stars · GitHub</span></div>
+        <div style="display:flex;gap:7px;margin:5px 0"><span class="vb u show">?</span><span>40% cloud-cost cut · no public evidence</span></div>
+        <div style="display:flex;gap:7px;margin:5px 0"><span class="vb u show">?</span><span>Managed team of 12 · no lead title on record</span></div>
+        <div style="display:flex;gap:7px;margin:5px 0"><span class="vb f show">False</span><span>"Lead Architect" · record shows 'Senior Engineer'</span></div>
+      </div>
+      <div style="font-size:10.5px;color:var(--mut);margin-top:6px">Result: <b style="color:var(--green)">4 True</b> · <b style="color:var(--amber)">2 Unverified</b> · <b style="color:var(--red)">1 False</b> — credibility 7.9/10</div></div>
+
+    <div class="rc"><h5>🎙️ Interview analysis</h5>
+      <div style="font-size:11.5px;line-height:1.55">
+        <b style="color:var(--green)">Best answer:</b> Diwali-sale incident — autoscaling + dead-letter queue, 20-min recovery. Specific, consistent with his architecture, shows real ownership.<br><br>
+        <b style="color:var(--amber)">Weakest moment:</b> Doubled down on "lead architect" when his title is Senior Engineer — handle in references, not a dealbreaker.<br><br>
+        <b style="color:var(--blue)">Still to test:</b> Sharding depth and the 40% cost claim were asserted but not evidenced.</div></div>
+
+    <div class="rc"><h5>✅ Strengths</h5><ul style="margin:0;padding-left:16px;font-size:12px;line-height:1.5">
+      <li>Verified ownership of a high-scale (10M-user) payments platform</li>
+      <li>Education + AWS credential confirmed genuine</li>
+      <li>Strong, independently verifiable open-source footprint</li>
+      <li>Clear communicator; gave a concrete, honest incident example</li></ul></div>
+
+    <div class="rc" style="border-color:#5a3a1a"><h5>⚠️ Risks &amp; red flags</h5><ul style="margin:0;padding-left:16px;font-size:12px;line-height:1.5">
+      <li><b style="color:var(--red)">False claim:</b> 'Lead Architect' conflicts with title on record — probe motive, not necessarily disqualifying</li>
+      <li><b style="color:var(--amber)">Unverified:</b> 40% cost cut &amp; team-of-12 — confirm with references</li>
+      <li><b style="color:var(--amber)">Leadership thin:</b> limited formal people-management evidence for a senior title</li></ul></div>
+
+    <div class="rc"><h5>💰 Salary &amp; offer recommendation</h5>
+      <div style="font-size:11.5px;line-height:1.6">
+        Market band (Sr. Backend, 6 yrs, Blr): <b>₹34–42 LPA</b><br>
+        Candidate ask: <b>₹38 LPA</b> — ~6% below midpoint, ~23% over current<br>
+        <b style="color:var(--green)">Recommended offer: ₹36–38 LPA</b> + standard ESOPs<br>
+        <span style="color:var(--mut)">Good value if references confirm scale impact. Hold the top of band until the architect claim is clarified.</span></div></div>
+
+    <div class="rc"><h5>📈 Rank vs shortlist</h5>
+      <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+        <tr style="color:var(--mut)"><td>#</td><td>Candidate</td><td>Fit</td><td>Cred.</td><td>Ask</td></tr>
+        <tr style="background:#1f2a3e"><td>1</td><td><b>Arjun M.</b> ←</td><td style="color:var(--green);font-weight:700">8.4</td><td>7.9</td><td>₹38L</td></tr>
+        <tr><td>2</td><td>Neha K.</td><td>7.6</td><td>6.4</td><td>₹41L</td></tr>
+        <tr><td>3</td><td>Rohan D.</td><td>6.1</td><td>7.2</td><td>₹33L</td></tr>
+      </table></div>
+
+    <div class="rc"><h5>➡️ Recommended next steps</h5><ul style="margin:0;padding-left:16px;font-size:12px;line-height:1.5">
+      <li>60-min technical screen on system design (sharding focus)</li>
+      <li>Reference check specifically on: architect scope + the 40% cost claim</li>
+      <li>If both clear → extend offer at ₹38 LPA</li></ul></div>
+
+    <div class="note" style="padding:8px 0 14px">⚖️ Decision-support only — HireLens flags evidence; the hiring manager decides. No emotion inference. · Exportable to PDF · auto-pushed to your ATS.</div>`;
+}
+function endCall(){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("on"));
+  document.querySelector('[data-t="report"]').classList.add("on");
+  ["verify","resume","jd","copilot","report"].forEach(n=>$("#p-"+n).classList.add("hide"));
+  $("#p-report").classList.remove("hide");
+  genReport();
+}
+</script>
+</body>
+</html>
